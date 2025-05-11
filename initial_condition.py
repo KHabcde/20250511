@@ -3,6 +3,8 @@ import pytesseract
 from PIL import Image
 import pytesseract
 from collections import Counter
+import numpy as np
+import pandas as pd
 
 # 座標の設定
 left = 82
@@ -443,5 +445,59 @@ if uncertain_cells:
     print("最頻値が決定しにくいセル:")
     for cell in uncertain_cells:
         print(f"行: {cell[0]}, 列: {cell[1]}")
+
+# 最終結果をテキストファイルに保存
+with open("final_numbers.txt", "w", encoding="utf-8") as f:
+    f.write("最終的な読み取り結果:\n")
+    for row in final_numbers:
+        f.write(" ".join(str(cell) if cell is not None else "None" for cell in row) + "\n")
+
+# 不確定なセルをテキストファイルに保存
+if uncertain_cells:
+    with open("uncertain_cells.txt", "w", encoding="utf-8") as f:
+        f.write("最頻値が決定しにくいセル:\n")
+        for cell in uncertain_cells:
+            f.write(f"行: {cell[0]}, 列: {cell[1]}\n")
+
+def read_final_numbers(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()[1:]  # Skip the first line
+        array = []
+        for line in lines:
+            row = [int(x) if x.isdigit() else None for x in line.strip().split()]
+            array.append(row)
+        return np.array(array)
+
+def update_uncertain_cell(array, row, col):
+    print(f"Current value at Row {row}, Column {col}: {array[row][col]}")
+    new_value = input("Enter a new value for this cell: ")
+    array[row][col] = int(new_value) if new_value.isdigit() else None
+    return array
+
+def save_to_excel(array, output_path):
+    df = pd.DataFrame(array)
+    df.to_excel(output_path, index=False, header=False)
+
+if __name__ == "__main__":
+    final_numbers_path = "final_numbers.txt"
+    uncertain_cells_path = "uncertain_cells.txt"
+    output_excel_path = "updated_final_numbers.xlsx"
+
+    # Read the 2D array from final_numbers.txt
+    final_numbers = read_final_numbers(final_numbers_path)
+
+    # Update uncertain cells
+    with open(uncertain_cells_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()[1:]  # Skip the first line
+        for line in lines:
+            try:
+                row, col = map(int, line.strip().split(': ')[1].split(', '))
+                final_numbers = update_uncertain_cell(final_numbers, row, col)
+            except (ValueError, IndexError) as e:
+                print(f"Skipping invalid line in uncertain_cells.txt: {line.strip()} ({e})")
+
+    # Save updated array to Excel
+    save_to_excel(final_numbers, output_excel_path)
+    print(f"Updated 2D array saved to {output_excel_path}")
 
 
